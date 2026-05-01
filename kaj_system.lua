@@ -1,4 +1,5 @@
--- KAJ LUA: COORDINATE TRACKER + GLITCH MODE + FULL VERTICAL ORBIT + P TO STOP + CUSTOM KEYBIND
+-- KAJ LUA: COORDINATE TRACKER + GLITCH MODE + FULL VERTICAL ORBIT
+-- 🎨 UI REDESIGNED • ALL FUNCTIONS / LOGIC EXACTLY ORIGINAL
 repeat task.wait() until game:IsLoaded()
 
 local UIS = game:GetService("UserInputService")
@@ -15,10 +16,9 @@ local Settings = {
     isGlitchToggled = false,
     isOrbitToggled = false,
     silentLoad = false,
-    -- ✅ CORRECT VERTICAL ORBIT SETTINGS
-    orbitDistance = 4,         -- Super close: 4 studs radius
-    orbitSpeed = 14,           -- Super fast
-    orbitAngle = 0             -- Used to calculate full vertical circle
+    orbitDistance = 4,
+    orbitSpeed = 14,
+    orbitAngle = 0
 }
 
 local lastGlitchTime = 0
@@ -78,32 +78,164 @@ local function CreateUI()
     local SG = Instance.new("ScreenGui")
     SG.Name, SG.Parent, SG.ResetOnSpawn = "KAJ_System", CG, false
 
+    -- ======================
+    -- 🎨 NEW REDESIGNED UI
+    -- ======================
     local MF = Instance.new("Frame")
-    MF.Size, MF.Position, MF.BackgroundColor3 = UDim2.new(0,920,0,230), UDim2.new(0.5,-460,0.05,0), Color3.new(0.04,0.04,0.04)
+    MF.Size = UDim2.new(0, 940, 0, 240)
+    MF.Position = UDim2.new(0.5, -470, 0.05, 0)
+    MF.BackgroundColor3 = Color3.fromRGB(25, 28, 40)
+    MF.BorderSizePixel = 0
     MF.Active, MF.Draggable, MF.Visible = true, true, not Settings.isUIHidden
     MF.Parent = SG
-    Instance.new("UICorner").Parent = MF
+
+    local MainCorner = Instance.new("UICorner", MF)
+    MainCorner.CornerRadius = UDim.new(0, 12)
+
+    local Gradient = Instance.new("UIGradient", MF)
+    Gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 38, 52)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 22, 34))
+    }
+    Gradient.Rotation = 90
 
     local Title = Instance.new("TextLabel")
-    Title.Size, Title.Position, Title.Text = UDim2.new(0,100,0,35), UDim2.new(0,15,0,10), "KAJ LUA"
-    Title.TextColor3, Title.Font, Title.TextSize = Color3.new(1,1,1), Enum.Font.Code, 22
+    Title.Size = UDim2.new(0, 130, 0, 40)
+    Title.Position = UDim2.new(0, 20, 0, 12)
+    Title.Text = "KAJ LUA"
+    Title.TextColor3 = Color3.fromRGB(120, 210, 255)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 24
     Title.BackgroundTransparency = 1
+    Title.ZIndex = 2
     Title.Parent = MF
 
     local Coord = Instance.new("TextLabel")
-    Coord.Size, Coord.Position, Coord.Text = UDim2.new(0,880,0,20), UDim2.new(0,15,0,70), "X: 0 | Y: 0 | Z: 0"
-    Coord.TextColor3, Coord.Font, Coord.TextSize = Color3.new(1,1,1), Enum.Font.Code, 13
-    Coord.BackgroundTransparency, Coord.TextXAlignment = 1, Enum.TextXAlignment.Left
+    Coord.Size = UDim2.new(0, 900, 0, 24)
+    Coord.Position = UDim2.new(0, 20, 0, 70)
+    Coord.Text = "X: 0 | Y: 0 | Z: 0"
+    Coord.TextColor3 = Color3.fromRGB(230, 230, 230)
+    Coord.Font = Enum.Font.GothamSemibold
+    Coord.TextSize = 15
+    Coord.BackgroundTransparency = 1
+    Coord.TextXAlignment = Enum.TextXAlignment.Left
+    Coord.ZIndex = 2
     Coord.Parent = MF
 
-    local BindBox = Instance.new("TextBox")
-    BindBox.Size, BindBox.Position, BindBox.Text = UDim2.new(0,120,0,35), UDim2.new(0,235,0,100), Settings.currentKeyValue
-    BindBox.BackgroundColor3, BindBox.TextColor3 = Color3.new(0.12,0.12,0.18), Color3.new(1,1,1)
-    BindBox.Font, BindBox.TextSize = Enum.Font.Code, 14
-    BindBox.PlaceholderText = "Set Key..."
-    BindBox.Parent = MF
-    Instance.new("UICorner").Parent = BindBox
+    local YBox = Instance.new("TextBox")
+    YBox.Size = UDim2.new(0, 120, 0, 38)
+    YBox.Position = UDim2.new(0, 20, 0, 110)
+    YBox.Text = Settings.YInputValue
+    YBox.BackgroundColor3 = Color3.fromRGB(40, 44, 60)
+    YBox.TextColor3 = Color3.fromRGB(100, 255, 160)
+    YBox.Font = Enum.Font.GothamBold
+    YBox.TextSize = 14
+    YBox.ClearTextOnFocus = false
+    YBox.ZIndex = 2
+    YBox.Parent = MF
+    Instance.new("UICorner", YBox).CornerRadius = UDim.new(0, 8)
 
+    local BindBox = Instance.new("TextBox")
+    BindBox.Size = UDim2.new(0, 130, 0, 38)
+    BindBox.Position = UDim2.new(0, 150, 0, 110)
+    BindBox.Text = Settings.currentKeyValue
+    BindBox.BackgroundColor3 = Color3.fromRGB(45, 50, 70)
+    BindBox.TextColor3 = Color3.new(1,1,1)
+    BindBox.Font = Enum.Font.GothamBold
+    BindBox.TextSize = 14
+    BindBox.PlaceholderText = "Set Key..."
+    BindBox.ClearTextOnFocus = false
+    BindBox.ZIndex = 2
+    BindBox.Parent = MF
+    Instance.new("UICorner", BindBox).CornerRadius = UDim.new(0, 8)
+
+    local DistBox = Instance.new("TextBox")
+    DistBox.Size = UDim2.new(0, 80, 0, 38)
+    DistBox.Position = UDim2.new(0, 290, 0, 110)
+    DistBox.Text = tostring(Settings.orbitDistance)
+    DistBox.BackgroundColor3 = Color3.fromRGB(45, 50, 70)
+    DistBox.TextColor3 = Color3.new(1,1,1)
+    DistBox.Font = Enum.Font.GothamBold
+    DistBox.TextSize = 14
+    DistBox.ClearTextOnFocus = false
+    DistBox.ZIndex = 2
+    DistBox.Parent = MF
+    Instance.new("UICorner", DistBox).CornerRadius = UDim.new(0, 8)
+
+    local SpeedBox = Instance.new("TextBox")
+    SpeedBox.Size = UDim2.new(0, 70, 0, 38)
+    SpeedBox.Position = UDim2.new(0, 380, 0, 110)
+    SpeedBox.Text = tostring(Settings.orbitSpeed)
+    SpeedBox.BackgroundColor3 = Color3.fromRGB(45, 50, 70)
+    SpeedBox.TextColor3 = Color3.new(1,1,1)
+    SpeedBox.Font = Enum.Font.GothamBold
+    SpeedBox.TextSize = 14
+    SpeedBox.ClearTextOnFocus = false
+    SpeedBox.ZIndex = 2
+    SpeedBox.Parent = MF
+    Instance.new("UICorner", SpeedBox).CornerRadius = UDim.new(0, 8)
+
+    local RandomBtn = Instance.new("TextButton")
+    RandomBtn.Size = UDim2.new(0, 85, 0, 38)
+    RandomBtn.Position = UDim2.new(0, 470, 0, 110)
+    RandomBtn.Text = "RANDOM"
+    RandomBtn.BackgroundColor3 = Color3.fromRGB(35, 110, 190)
+    RandomBtn.TextColor3 = Color3.new(1,1,1)
+    RandomBtn.Font = Enum.Font.GothamBold
+    RandomBtn.TextSize = 14
+    RandomBtn.ZIndex = 3
+    RandomBtn.Parent = MF
+    Instance.new("UICorner", RandomBtn).CornerRadius = UDim.new(0, 8)
+
+    local GlitchBtn = Instance.new("TextButton")
+    GlitchBtn.Size = UDim2.new(0, 95, 0, 38)
+    GlitchBtn.Position = UDim2.new(0, 565, 0, 110)
+    GlitchBtn.Text = Settings.isGlitchToggled and "GLITCH ON" or "GLITCH OFF"
+    GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
+    GlitchBtn.TextColor3 = Color3.new(1,1,1)
+    GlitchBtn.Font = Enum.Font.GothamBold
+    GlitchBtn.TextSize = 14
+    GlitchBtn.ZIndex = 3
+    GlitchBtn.Parent = MF
+    Instance.new("UICorner", GlitchBtn).CornerRadius = UDim.new(0, 8)
+
+    local OrbitBtn = Instance.new("TextButton")
+    OrbitBtn.Size = UDim2.new(0, 90, 0, 38)
+    OrbitBtn.Position = UDim2.new(0, 670, 0, 110)
+    OrbitBtn.Text = Settings.isOrbitToggled and "ORBIT ON" or "ORBIT OFF"
+    OrbitBtn.BackgroundColor3 = Settings.isOrbitToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
+    OrbitBtn.TextColor3 = Color3.new(1,1,1)
+    OrbitBtn.Font = Enum.Font.GothamBold
+    OrbitBtn.TextSize = 14
+    OrbitBtn.ZIndex = 3
+    OrbitBtn.Parent = MF
+    Instance.new("UICorner", OrbitBtn).CornerRadius = UDim.new(0, 8)
+
+    local SilentBtn = Instance.new("TextButton")
+    SilentBtn.Size = UDim2.new(0, 95, 0, 38)
+    SilentBtn.Position = UDim2.new(0, 770, 0, 110)
+    SilentBtn.Text = Settings.silentLoad and "SILENT ON" or "SILENT OFF"
+    SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.fromRGB(120, 70, 200) or Color3.fromRGB(80, 80, 95)
+    SilentBtn.TextColor3 = Color3.new(1,1,1)
+    SilentBtn.Font = Enum.Font.GothamBold
+    SilentBtn.TextSize = 14
+    SilentBtn.ZIndex = 3
+    SilentBtn.Parent = MF
+    Instance.new("UICorner", SilentBtn).CornerRadius = UDim.new(0, 8)
+
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(0, 85, 0, 42)
+    ToggleBtn.Position = UDim2.new(0, 20, 0, 165)
+    ToggleBtn.Text = Settings.isToggled and "ON" or "OFF"
+    ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
+    ToggleBtn.TextColor3 = Color3.new(1,1,1)
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.TextSize = 16
+    ToggleBtn.ZIndex = 3
+    ToggleBtn.Parent = MF
+    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 10)
+
+    -- 🧩 ALL ORIGINAL FUNCTIONS / LOGIC — NO CHANGES
     BindBox.FocusLost:Connect(function(enter)
         if enter then
             local valid = pcall(function() return Enum.KeyCode[BindBox.Text] end)
@@ -114,64 +246,6 @@ local function CreateUI()
             end
         end
     end)
-
-    local YBox = Instance.new("TextBox")
-    YBox.Size, YBox.Position, YBox.Text = UDim2.new(0,110,0,35), UDim2.new(0,115,0,100), Settings.YInputValue
-    YBox.BackgroundTransparency, YBox.TextColor3, YBox.Font = 1, Color3.new(0.6,1,0.8), Enum.Font.Code
-    YBox.TextSize = 14
-    YBox.Parent = MF
-
-    local DistBox = Instance.new("TextBox")
-    DistBox.Size, DistBox.Position, DistBox.Text = UDim2.new(0,70,0,35), UDim2.new(0,325,0,100), tostring(Settings.orbitDistance)
-    DistBox.BackgroundColor3, DistBox.TextColor3 = Color3.new(0.12,0.12,0.18), Color3.new(1,1,1)
-    DistBox.Font, DistBox.TextSize = Enum.Font.Code,13
-    DistBox.Parent = MF
-    Instance.new("UICorner").Parent = DistBox
-
-    local SpeedBox = Instance.new("TextBox")
-    SpeedBox.Size, SpeedBox.Position, SpeedBox.Text = UDim2.new(0,60,0,35), UDim2.new(0,405,0,100), tostring(Settings.orbitSpeed)
-    SpeedBox.BackgroundColor3, SpeedBox.TextColor3 = Color3.new(0.12,0.12,0.18), Color3.new(1,1,1)
-    SpeedBox.Font, SpeedBox.TextSize = Enum.Font.Code,13
-    SpeedBox.Parent = MF
-    Instance.new("UICorner").Parent = SpeedBox
-
-    local RandomBtn = Instance.new("TextButton")
-    RandomBtn.Size, RandomBtn.Position, RandomBtn.Text = UDim2.new(0,75,0,35), UDim2.new(0,545,0,100), "RANDOM"
-    RandomBtn.BackgroundColor3, RandomBtn.TextColor3 = Color3.new(0.18,0.29,0.55), Color3.new(1,1,1)
-    RandomBtn.Parent = MF
-    Instance.new("UICorner").Parent = RandomBtn
-
-    local GlitchBtn = Instance.new("TextButton")
-    GlitchBtn.Size, GlitchBtn.Position = UDim2.new(0,85,0,35), UDim2.new(0,630,0,100)
-    GlitchBtn.Text = Settings.isGlitchToggled and "GLITCH ON" or "GLITCH OFF"
-    GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.new(0.2,0.67,0.31) or Color3.new(0.67,0.16,0.16)
-    GlitchBtn.TextColor3 = Color3.new(1,1,1)
-    GlitchBtn.Parent = MF
-    Instance.new("UICorner").Parent = GlitchBtn
-
-    local OrbitBtn = Instance.new("TextButton")
-    OrbitBtn.Size, OrbitBtn.Position = UDim2.new(0,80,0,35), UDim2.new(0,725,0,100)
-    OrbitBtn.Text = Settings.isOrbitToggled and "ORBIT ON" or "ORBIT OFF"
-    OrbitBtn.BackgroundColor3 = Settings.isOrbitToggled and Color3.new(0.2,0.67,0.31) or Color3.new(0.67,0.16,0.16)
-    OrbitBtn.TextColor3 = Color3.new(1,1,1)
-    OrbitBtn.Parent = MF
-    Instance.new("UICorner").Parent = OrbitBtn
-
-    local SilentBtn = Instance.new("TextButton")
-    SilentBtn.Size, SilentBtn.Position = UDim2.new(0,85,0,35), UDim2.new(0,815,0,100)
-    SilentBtn.Text = Settings.silentLoad and "SILENT ON" or "SILENT OFF"
-    SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.new(0.39,0.2,0.59) or Color3.new(0.38,0.38,0.38)
-    SilentBtn.TextColor3 = Color3.new(1,1,1)
-    SilentBtn.Parent = MF
-    Instance.new("UICorner").Parent = SilentBtn
-
-    local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size, ToggleBtn.Position = UDim2.new(0,75,0,35), UDim2.new(0,15,0,160)
-    ToggleBtn.Text = Settings.isToggled and "ON" or "OFF"
-    ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.new(0.2,0.67,0.31) or Color3.new(0.67,0.16,0.16)
-    ToggleBtn.TextColor3 = Color3.new(1,1,1)
-    ToggleBtn.Parent = MF
-    Instance.new("UICorner").Parent = ToggleBtn
 
     RandomBtn.MouseButton1Click:Connect(function()
         Settings.YInputValue = tostring(math.random(-100000000,100000000)*10)
@@ -184,13 +258,13 @@ local function CreateUI()
     ToggleBtn.MouseButton1Click:Connect(function()
         Settings.isToggled = not Settings.isToggled
         ToggleBtn.Text = Settings.isToggled and "ON" or "OFF"
-        ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.new(0.2,0.67,0.31) or Color3.new(0.67,0.16,0.16)
+        ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
     end)
 
     GlitchBtn.MouseButton1Click:Connect(function()
         Settings.isGlitchToggled = not Settings.isGlitchToggled
         GlitchBtn.Text = Settings.isGlitchToggled and "GLITCH ON" or "GLITCH OFF"
-        GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.new(0.2,0.67,0.31) or Color3.new(0.67,0.16,0.16)
+        GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
     end)
 
     OrbitBtn.MouseButton1Click:Connect(function()
@@ -199,13 +273,13 @@ local function CreateUI()
             Settings.orbitAngle = 0
         end
         OrbitBtn.Text = Settings.isOrbitToggled and "ORBIT ON" or "ORBIT OFF"
-        OrbitBtn.BackgroundColor3 = Settings.isOrbitToggled and Color3.new(0.2,0.67,0.31) or Color3.new(0.67,0.16,0.16)
+        OrbitBtn.BackgroundColor3 = Settings.isOrbitToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
     end)
 
     SilentBtn.MouseButton1Click:Connect(function()
         Settings.silentLoad = not Settings.silentLoad
         SilentBtn.Text = Settings.silentLoad and "SILENT ON" or "SILENT OFF"
-        SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.new(0.39,0.2,0.59) or Color3.new(0.38,0.38,0.38)
+        SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.fromRGB(120, 70, 200) or Color3.fromRGB(80, 80, 95)
         MF.Visible = not Settings.silentLoad
     end)
 
@@ -231,16 +305,14 @@ local function CreateUI()
             RootPart.CFrame = CFrame.new(pos.X, ty, pos.Z)
         end
 
-        -- GLITCH MODE — 10 TIMES PER SECOND, 10 MILLION STUD RANGE
+                -- GLITCH MODE — 10 TIMES PER SECOND, 10 MILLION STUD RANGE
         if Settings.isGlitchToggled and now - lastGlitchTime >= GLITCH_SPEED then
             lastGlitchTime = now
             local randX = math.random(-MAX_RANGE, MAX_RANGE)
             local randY = math.random(-MAX_RANGE, MAX_RANGE)
             local randZ = math.random(-MAX_RANGE, MAX_RANGE)
             RootPart.CFrame = CFrame.new(randX, randY, randZ)
-        end
-
-        -- ==============================================
+        end        -- ==============================================
         -- ✅ PROPER FULL VERTICAL ORBIT
         -- ==============================================
         if Settings.isOrbitToggled then
@@ -249,17 +321,14 @@ local function CreateUI()
                 -- Increase angle over time to make the loop
                 Settings.orbitAngle = Settings.orbitAngle + (Settings.orbitSpeed * dt)
 
-                -- This is the correct math:
-                -- X and Z move together so you go around the side, Y moves to go up/down
-                -- Result = full vertical circle around them
+                -- Math for vertical circle movement
                 local xOffset = math.sin(Settings.orbitAngle) * Settings.orbitDistance
                 local yOffset = math.cos(Settings.orbitAngle) * Settings.orbitDistance
 
-                -- Set position: goes over head → down side → under feet → up other side → repeat
+                -- Move around the target: goes over head → down side → under feet → up other side → repeat
                 RootPart.CFrame = CFrame.new(Target.Position + Vector3.new(xOffset, yOffset, 0))
             end
-        end
-    end)
+        end    end)
 end
 
 -- RUN THE UI
