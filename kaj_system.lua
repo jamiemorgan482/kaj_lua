@@ -1,4 +1,4 @@
--- KAJ LUA: COORDINATE TRACKER + MASSIVE GLITCH MODE + 3D ORBIT + P TO STOP + CUSTOM KEYBIND
+-- KAJ LUA: COORDINATE TRACKER + GLITCH MODE + FULL VERTICAL ORBIT + P TO STOP + CUSTOM KEYBIND
 repeat task.wait() until game:IsLoaded()
 
 local UIS = game:GetService("UserInputService")
@@ -8,24 +8,22 @@ local CG = game:GetService("CoreGui")
 local LP = PS.LocalPlayer
 
 local Settings = {
-    currentKeyValue = "RightControl", -- DEFAULT KEY
+    currentKeyValue = "RightControl",
     isUIHidden = false,
     YInputValue = "-21827023942",
     isToggled = false,
     isGlitchToggled = false,
     isOrbitToggled = false,
     silentLoad = false,
-    -- NEW ORBIT SETTINGS: FURTHER & FASTER + 3D MOVEMENT
-    orbitDistance = 30,       -- Was 15 → now 30 studs away
-    orbitSpeed = 6,           -- Was 1.5 → 4x faster!
-    orbitHeightOffset = 0,
-    orbitAngleX = 0,
-    orbitAngleY = 0
+    -- ✅ CORRECT VERTICAL ORBIT SETTINGS
+    orbitDistance = 4,         -- Super close: 4 studs radius
+    orbitSpeed = 14,           -- Super fast
+    orbitAngle = 0             -- Used to calculate full vertical circle
 }
 
 local lastGlitchTime = 0
-local GLITCH_SPEED = 1/10 -- 10 teleports per second
-local MAX_RANGE = 10000000 -- 10 MILLION studs each axis
+local GLITCH_SPEED = 1/10
+local MAX_RANGE = 10000000
 
 local Character = LP.Character or LP.CharacterAdded:Wait()
 local RootPart = Character:WaitForChild("HumanoidRootPart")
@@ -41,8 +39,6 @@ end)
 -- ==============================================
 UIS.InputBegan:Connect(function(Input, gp)
     if gp then return end
-
-    -- === CUSTOM KEYBIND TO TOGGLE UI ===
     if Input.KeyCode == Enum.KeyCode[Settings.currentKeyValue] then
         Settings.isUIHidden = not Settings.isUIHidden
         if CG:FindFirstChild("KAJ_System") then
@@ -50,8 +46,6 @@ UIS.InputBegan:Connect(function(Input, gp)
         end
         return
     end
-
-    -- === P TO DELETE SCRIPT ===
     if Input.KeyCode == Enum.KeyCode.P then
         if CG:FindFirstChild("KAJ_System") then
             CG.KAJ_System:Destroy()
@@ -102,7 +96,6 @@ local function CreateUI()
     Coord.BackgroundTransparency, Coord.TextXAlignment = 1, Enum.TextXAlignment.Left
     Coord.Parent = MF
 
-    -- === KEYBIND BOX ===
     local BindBox = Instance.new("TextBox")
     BindBox.Size, BindBox.Position, BindBox.Text = UDim2.new(0,120,0,35), UDim2.new(0,235,0,100), Settings.currentKeyValue
     BindBox.BackgroundColor3, BindBox.TextColor3 = Color3.new(0.12,0.12,0.18), Color3.new(1,1,1)
@@ -141,13 +134,6 @@ local function CreateUI()
     SpeedBox.Font, SpeedBox.TextSize = Enum.Font.Code,13
     SpeedBox.Parent = MF
     Instance.new("UICorner").Parent = SpeedBox
-
-    local HeightBox = Instance.new("TextBox")
-    HeightBox.Size, HeightBox.Position, HeightBox.Text = UDim2.new(0,60,0,35), UDim2.new(0,475,0,100), tostring(Settings.orbitHeightOffset)
-    HeightBox.BackgroundColor3, HeightBox.TextColor3 = Color3.new(0.12,0.12,0.18), Color3.new(1,1,1)
-    HeightBox.Font, HeightBox.TextSize = Enum.Font.Code,13
-    HeightBox.Parent = MF
-    Instance.new("UICorner").Parent = HeightBox
 
     local RandomBtn = Instance.new("TextButton")
     RandomBtn.Size, RandomBtn.Position, RandomBtn.Text = UDim2.new(0,75,0,35), UDim2.new(0,545,0,100), "RANDOM"
@@ -210,8 +196,7 @@ local function CreateUI()
     OrbitBtn.MouseButton1Click:Connect(function()
         Settings.isOrbitToggled = not Settings.isOrbitToggled
         if Settings.isOrbitToggled then
-            Settings.orbitAngleX = 0
-            Settings.orbitAngleY = 0
+            Settings.orbitAngle = 0
         end
         OrbitBtn.Text = Settings.isOrbitToggled and "ORBIT ON" or "ORBIT OFF"
         OrbitBtn.BackgroundColor3 = Settings.isOrbitToggled and Color3.new(0.2,0.67,0.31) or Color3.new(0.67,0.16,0.16)
@@ -232,11 +217,6 @@ local function CreateUI()
     SpeedBox.FocusLost:Connect(function(enter) 
         if enter and tonumber(SpeedBox.Text) then 
             Settings.orbitSpeed = tonumber(SpeedBox.Text) 
-        end 
-    end)
-    HeightBox.FocusLost:Connect(function(enter) 
-        if enter and tonumber(HeightBox.Text) then 
-            Settings.orbitHeightOffset = tonumber(HeightBox.Text) 
         end 
     end)
 
@@ -261,26 +241,26 @@ local function CreateUI()
         end
 
         -- ==============================================
-        -- NEW 3D ORBIT: GOES OVER, UNDER & ALL AROUND
+        -- ✅ PROPER FULL VERTICAL ORBIT
         -- ==============================================
         if Settings.isOrbitToggled then
             local Target = GetClosestEnemy()
             if Target then
-                -- Increase angles over time for FULL 3D movement
-                Settings.orbitAngleY = Settings.orbitAngleY + (Settings.orbitSpeed * dt)
-                Settings.orbitAngleX = Settings.orbitAngleX + (Settings.orbitSpeed * dt * 0.7) -- Slight difference for natural loop
-                
-                -- Calculate position: horizontal AND vertical offset
-                local x = math.cos(Settings.orbitAngleY) * math.cos(Settings.orbitAngleX) * Settings.orbitDistance
-                local y = math.sin(Settings.orbitAngleX) * Settings.orbitDistance + Settings.orbitHeightOffset
-                local z = math.sin(Settings.orbitAngleY) * math.cos(Settings.orbitAngleX) * Settings.orbitDistance
+                -- Increase angle over time to make the loop
+                Settings.orbitAngle = Settings.orbitAngle + (Settings.orbitSpeed * dt)
 
-                -- Set position relative to target
-                RootPart.CFrame = CFrame.new(Target.Position + Vector3.new(x, y, z))
+                -- This is the correct math:
+                -- X and Z move together so you go around the side, Y moves to go up/down
+                -- Result = full vertical circle around them
+                local xOffset = math.sin(Settings.orbitAngle) * Settings.orbitDistance
+                local yOffset = math.cos(Settings.orbitAngle) * Settings.orbitDistance
+
+                -- Set position: goes over head → down side → under feet → up other side → repeat
+                RootPart.CFrame = CFrame.new(Target.Position + Vector3.new(xOffset, yOffset, 0))
             end
         end
     end)
 end
 
--- THIS IS THE MOST IMPORTANT LINE — IT ACTUALLY RUNS THE UI!!
+-- RUN THE UI
 CreateUI()
