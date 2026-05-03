@@ -1,335 +1,141 @@
--- KAJ LUA: COORDINATE TRACKER + GLITCH MODE + FULL VERTICAL ORBIT
--- 🎨 UI REDESIGNED • ALL FUNCTIONS / LOGIC EXACTLY ORIGINAL
+-- KAJ LUA: COORDINATE TRACKER + RIVALS BYPASS (UPDATED)
 repeat task.wait() until game:IsLoaded()
 
-local UIS = game:GetService("UserInputService")
-local PS = game:GetService("Players")
-local RS = game:GetService("RunService")
-local CG = game:GetService("CoreGui")
-local LP = PS.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
 
+local SaveFileName = "KAJ_Settings.txt"
+
+-- --------------------------
+-- SETTINGS & PERSISTENCE
+-- --------------------------
 local Settings = {
     currentKeyValue = "RightControl",
-    isUIHidden = false,
     YInputValue = "-21827023942",
     isToggled = false,
     isGlitchToggled = false,
-    isOrbitToggled = false,
     silentLoad = false,
-    orbitDistance = 4,
-    orbitSpeed = 14,
-    orbitAngle = 0
+    autoVote = false
 }
 
-local lastGlitchTime = 0
-local GLITCH_SPEED = 1/10
-local MAX_RANGE = 10000000
+local function SaveSettings()
+    local dataTable = {}
+    for k, v in pairs(Settings) do table.insert(dataTable, k .. "=" .. tostring(v)) end
+    if writefile then pcall(function() writefile(SaveFileName, table.concat(dataTable, "\n")) end) end
+end
 
-local Character = LP.Character or LP.CharacterAdded:Wait()
+local function LoadSettings()
+    if isfile and isfile(SaveFileName) then
+        local success, loadedData = pcall(function() return readfile(SaveFileName) end)
+        if success then
+            for line in loadedData:gmatch("[^\n]+") do
+                local key, value = line:match("^(.-)=(.+)$")
+                if key and Settings[key] ~= nil then
+                    if value == "true" or value == "false" then Settings[key] = (value == "true") else Settings[key] = value end
+                end
+            end
+        end
+    end
+end
+
+LoadSettings()
+
+-- --------------------------
+-- CHARACTER TRACKING (FIXED FOR RESPAWNS)
+-- --------------------------
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
-LP.CharacterAdded:Connect(function(newChar)
+LocalPlayer.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:WaitForChild("HumanoidRootPart")
-    lastGlitchTime = 0
 end)
 
--- ==============================================
--- PRESS P TO STOP & REMOVE EVERYTHING
--- ==============================================
-UIS.InputBegan:Connect(function(Input, gp)
-    if gp then return end
-    if Input.KeyCode == Enum.KeyCode[Settings.currentKeyValue] then
-        Settings.isUIHidden = not Settings.isUIHidden
-        if CG:FindFirstChild("KAJ_System") then
-            CG.KAJ_System.Enabled = not Settings.isUIHidden
-        end
-        return
-    end
-    if Input.KeyCode == Enum.KeyCode.P then
-        if CG:FindFirstChild("KAJ_System") then
-            CG.KAJ_System:Destroy()
-        end
-        RS:UnbindFromRenderStep("KAJ_Loop")
-        Settings = nil
-        Character = nil
-        RootPart = nil
-        return
-    end
-end)
-
-local function GetClosestEnemy()
-    local close, dist = nil, math.huge
-    for _,p in ipairs(PS:GetPlayers()) do
-        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.Humanoid.Health > 0 then
-            local d = (RootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                close = p.Character.HumanoidRootPart
-                dist = d
-            end
-        end
-    end
-    return close
-end
-
+-- --------------------------
+-- UI CREATION
+-- --------------------------
 local function CreateUI()
-    if CG:FindFirstChild("KAJ_System") then CG.KAJ_System:Destroy() end
+    if CoreGui:FindFirstChild("KAJ_System") then CoreGui.KAJ_System:Destroy() end
 
-    local SG = Instance.new("ScreenGui")
-    SG.Name, SG.Parent, SG.ResetOnSpawn = "KAJ_System", CG, false
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "KAJ_System"; ScreenGui.Parent = CoreGui; ScreenGui.ResetOnSpawn = false
 
-    -- ======================
-    -- 🎨 NEW REDESIGNED UI
-    -- ======================
-    local MF = Instance.new("Frame")
-    MF.Size = UDim2.new(0, 940, 0, 240)
-    MF.Position = UDim2.new(0.5, -470, 0.05, 0)
-    MF.BackgroundColor3 = Color3.fromRGB(25, 28, 40)
-    MF.BorderSizePixel = 0
-    MF.Active, MF.Draggable, MF.Visible = true, true, not Settings.isUIHidden
-    MF.Parent = SG
-
-    local MainCorner = Instance.new("UICorner", MF)
-    MainCorner.CornerRadius = UDim.new(0, 12)
-
-    local Gradient = Instance.new("UIGradient", MF)
-    Gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 38, 52)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 22, 34))
-    }
-    Gradient.Rotation = 90
-
+    local MainFrame = Instance.new("Frame")
     local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(0, 130, 0, 40)
-    Title.Position = UDim2.new(0, 20, 0, 12)
-    Title.Text = "KAJ LUA"
-    Title.TextColor3 = Color3.fromRGB(120, 210, 255)
-    Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 24
-    Title.BackgroundTransparency = 1
-    Title.ZIndex = 2
-    Title.Parent = MF
-
-    local Coord = Instance.new("TextLabel")
-    Coord.Size = UDim2.new(0, 900, 0, 24)
-    Coord.Position = UDim2.new(0, 20, 0, 70)
-    Coord.Text = "X: 0 | Y: 0 | Z: 0"
-    Coord.TextColor3 = Color3.fromRGB(230, 230, 230)
-    Coord.Font = Enum.Font.GothamSemibold
-    Coord.TextSize = 15
-    Coord.BackgroundTransparency = 1
-    Coord.TextXAlignment = Enum.TextXAlignment.Left
-    Coord.ZIndex = 2
-    Coord.Parent = MF
-
-    local YBox = Instance.new("TextBox")
-    YBox.Size = UDim2.new(0, 120, 0, 38)
-    YBox.Position = UDim2.new(0, 20, 0, 110)
-    YBox.Text = Settings.YInputValue
-    YBox.BackgroundColor3 = Color3.fromRGB(40, 44, 60)
-    YBox.TextColor3 = Color3.fromRGB(100, 255, 160)
-    YBox.Font = Enum.Font.GothamBold
-    YBox.TextSize = 14
-    YBox.ClearTextOnFocus = false
-    YBox.ZIndex = 2
-    YBox.Parent = MF
-    Instance.new("UICorner", YBox).CornerRadius = UDim.new(0, 8)
-
-    local BindBox = Instance.new("TextBox")
-    BindBox.Size = UDim2.new(0, 130, 0, 38)
-    BindBox.Position = UDim2.new(0, 150, 0, 110)
-    BindBox.Text = Settings.currentKeyValue
-    BindBox.BackgroundColor3 = Color3.fromRGB(45, 50, 70)
-    BindBox.TextColor3 = Color3.new(1,1,1)
-    BindBox.Font = Enum.Font.GothamBold
-    BindBox.TextSize = 14
-    BindBox.PlaceholderText = "Set Key..."
-    BindBox.ClearTextOnFocus = false
-    BindBox.ZIndex = 2
-    BindBox.Parent = MF
-    Instance.new("UICorner", BindBox).CornerRadius = UDim.new(0, 8)
-
-    local DistBox = Instance.new("TextBox")
-    DistBox.Size = UDim2.new(0, 80, 0, 38)
-    DistBox.Position = UDim2.new(0, 290, 0, 110)
-    DistBox.Text = tostring(Settings.orbitDistance)
-    DistBox.BackgroundColor3 = Color3.fromRGB(45, 50, 70)
-    DistBox.TextColor3 = Color3.new(1,1,1)
-    DistBox.Font = Enum.Font.GothamBold
-    DistBox.TextSize = 14
-    DistBox.ClearTextOnFocus = false
-    DistBox.ZIndex = 2
-    DistBox.Parent = MF
-    Instance.new("UICorner", DistBox).CornerRadius = UDim.new(0, 8)
-
-    local SpeedBox = Instance.new("TextBox")
-    SpeedBox.Size = UDim2.new(0, 70, 0, 38)
-    SpeedBox.Position = UDim2.new(0, 380, 0, 110)
-    SpeedBox.Text = tostring(Settings.orbitSpeed)
-    SpeedBox.BackgroundColor3 = Color3.fromRGB(45, 50, 70)
-    SpeedBox.TextColor3 = Color3.new(1,1,1)
-    SpeedBox.Font = Enum.Font.GothamBold
-    SpeedBox.TextSize = 14
-    SpeedBox.ClearTextOnFocus = false
-    SpeedBox.ZIndex = 2
-    SpeedBox.Parent = MF
-    Instance.new("UICorner", SpeedBox).CornerRadius = UDim.new(0, 8)
-
-    local RandomBtn = Instance.new("TextButton")
-    RandomBtn.Size = UDim2.new(0, 85, 0, 38)
-    RandomBtn.Position = UDim2.new(0, 470, 0, 110)
-    RandomBtn.Text = "RANDOM"
-    RandomBtn.BackgroundColor3 = Color3.fromRGB(35, 110, 190)
-    RandomBtn.TextColor3 = Color3.new(1,1,1)
-    RandomBtn.Font = Enum.Font.GothamBold
-    RandomBtn.TextSize = 14
-    RandomBtn.ZIndex = 3
-    RandomBtn.Parent = MF
-    Instance.new("UICorner", RandomBtn).CornerRadius = UDim.new(0, 8)
-
-    local GlitchBtn = Instance.new("TextButton")
-    GlitchBtn.Size = UDim2.new(0, 95, 0, 38)
-    GlitchBtn.Position = UDim2.new(0, 565, 0, 110)
-    GlitchBtn.Text = Settings.isGlitchToggled and "GLITCH ON" or "GLITCH OFF"
-    GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
-    GlitchBtn.TextColor3 = Color3.new(1,1,1)
-    GlitchBtn.Font = Enum.Font.GothamBold
-    GlitchBtn.TextSize = 14
-    GlitchBtn.ZIndex = 3
-    GlitchBtn.Parent = MF
-    Instance.new("UICorner", GlitchBtn).CornerRadius = UDim.new(0, 8)
-
-    local OrbitBtn = Instance.new("TextButton")
-    OrbitBtn.Size = UDim2.new(0, 90, 0, 38)
-    OrbitBtn.Position = UDim2.new(0, 670, 0, 110)
-    OrbitBtn.Text = Settings.isOrbitToggled and "ORBIT ON" or "ORBIT OFF"
-    OrbitBtn.BackgroundColor3 = Settings.isOrbitToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
-    OrbitBtn.TextColor3 = Color3.new(1,1,1)
-    OrbitBtn.Font = Enum.Font.GothamBold
-    OrbitBtn.TextSize = 14
-    OrbitBtn.ZIndex = 3
-    OrbitBtn.Parent = MF
-    Instance.new("UICorner", OrbitBtn).CornerRadius = UDim.new(0, 8)
-
-    local SilentBtn = Instance.new("TextButton")
-    SilentBtn.Size = UDim2.new(0, 95, 0, 38)
-    SilentBtn.Position = UDim2.new(0, 770, 0, 110)
-    SilentBtn.Text = Settings.silentLoad and "SILENT ON" or "SILENT OFF"
-    SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.fromRGB(120, 70, 200) or Color3.fromRGB(80, 80, 95)
-    SilentBtn.TextColor3 = Color3.new(1,1,1)
-    SilentBtn.Font = Enum.Font.GothamBold
-    SilentBtn.TextSize = 14
-    SilentBtn.ZIndex = 3
-    SilentBtn.Parent = MF
-    Instance.new("UICorner", SilentBtn).CornerRadius = UDim.new(0, 8)
-
+    local YInput = Instance.new("TextBox")
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 85, 0, 42)
-    ToggleBtn.Position = UDim2.new(0, 20, 0, 165)
-    ToggleBtn.Text = Settings.isToggled and "ON" or "OFF"
-    ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
-    ToggleBtn.TextColor3 = Color3.new(1,1,1)
-    ToggleBtn.Font = Enum.Font.GothamBold
-    ToggleBtn.TextSize = 16
-    ToggleBtn.ZIndex = 3
-    ToggleBtn.Parent = MF
-    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 10)
+    local RandomBtn = Instance.new("TextButton")
+    local GlitchBtn = Instance.new("TextButton")
+    local SilentBtn = Instance.new("TextButton")
+    local VoteBtn = Instance.new("TextButton") 
+    local BindInput = Instance.new("TextBox")
+    local DetectorLabel = Instance.new("TextLabel")
+    local OpenButton = Instance.new("TextButton")
+    local CoordLabel = Instance.new("TextLabel")
 
-    -- 🧩 ALL ORIGINAL FUNCTIONS / LOGIC — NO CHANGES
-    BindBox.FocusLost:Connect(function(enter)
-        if enter then
-            local valid = pcall(function() return Enum.KeyCode[BindBox.Text] end)
-            if valid then
-                Settings.currentKeyValue = BindBox.Text
-            else
-                BindBox.Text = Settings.currentKeyValue
+    local currentKey = Enum.KeyCode[Settings.currentKeyValue] or Enum.KeyCode.RightControl
+    MainFrame.Visible = not Settings.silentLoad
+
+    OpenButton.Size = UDim2.new(0, 55, 0, 55); OpenButton.Position = UDim2.new(0.05, 0, 0.4, 0); OpenButton.BackgroundColor3 = Color3.fromRGB(20, 20, 30); OpenButton.Text = "KAJ"; OpenButton.TextColor3 = Color3.fromRGB(150, 255, 200); OpenButton.Visible = UserInputService.TouchEnabled; OpenButton.Parent = ScreenGui; Instance.new("UICorner", OpenButton)
+    MainFrame.Size = UDim2.new(0, 850, 0, 120); MainFrame.Position = UDim2.new(0.5, -425, 0.05, 0); MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 12); MainFrame.Active = true; MainFrame.Draggable = true; MainFrame.Parent = ScreenGui; Instance.new("UICorner", MainFrame)
+    Title.Size = UDim2.new(0, 100, 0, 35); Title.Position = UDim2.new(0, 15, 0, 10); Title.Text = "KAJ LUA"; Title.TextColor3 = Color3.new(1,1,1); Title.Font = Enum.Font.Code; Title.TextSize = 22; Title.BackgroundTransparency = 1; Title.Parent = MainFrame
+    CoordLabel.Size = UDim2.new(0, 800, 0, 20); CoordLabel.Position = UDim2.new(0, 15, 0, 70); CoordLabel.Text = "X: 0 | Y: 0 | Z: 0"; CoordLabel.TextColor3 = Color3.fromRGB(255, 255, 255); CoordLabel.TextSize = 13; CoordLabel.Font = Enum.Font.Code; CoordLabel.BackgroundTransparency = 1; CoordLabel.TextXAlignment = Enum.TextXAlignment.Left; CoordLabel.Parent = MainFrame
+    DetectorLabel.Size = UDim2.new(0, 450, 0, 20); DetectorLabel.Position = UDim2.new(0, 15, 0, 90); DetectorLabel.Text = "RIVALS BYPASS ACTIVE | P TO KILL SCRIPT"; DetectorLabel.TextColor3 = Color3.fromRGB(0, 255, 180); DetectorLabel.TextSize = 11; DetectorLabel.Font = Enum.Font.Code; DetectorLabel.BackgroundTransparency = 1; DetectorLabel.Parent = MainFrame
+    
+    YInput.Size = UDim2.new(0, 140, 0, 35); YInput.Position = UDim2.new(0, 110, 0, 10); YInput.Text = Settings.YInputValue; YInput.TextColor3 = Color3.fromRGB(150, 255, 200); YInput.Font = Enum.Font.Code; YInput.TextSize = 14; YInput.BackgroundTransparency = 1; YInput.Parent = MainFrame
+    BindInput.Size = UDim2.new(0, 90, 0, 35); BindInput.Position = UDim2.new(0, 250, 0.08, 0); BindInput.Text = Settings.currentKeyValue; BindInput.BackgroundColor3 = Color3.fromRGB(30, 30, 45); BindInput.TextColor3 = Color3.new(1,1,1); BindInput.Parent = MainFrame; Instance.new("UICorner", BindInput)
+    RandomBtn.Size = UDim2.new(0, 80, 0, 35); RandomBtn.Position = UDim2.new(0, 350, 0.08, 0); RandomBtn.Text = "RANDOM"; RandomBtn.BackgroundColor3 = Color3.fromRGB(45, 75, 140); RandomBtn.TextColor3 = Color3.new(1,1,1); RandomBtn.Parent = MainFrame; Instance.new("UICorner", RandomBtn)
+    GlitchBtn.Size = UDim2.new(0, 90, 0, 35); GlitchBtn.Position = UDim2.new(0, 440, 0.08, 0); GlitchBtn.Text = Settings.isGlitchToggled and "GLITCH ON" or "GLITCH OFF"; GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.fromRGB(50, 170, 80) or Color3.fromRGB(170, 40, 40); GlitchBtn.TextColor3 = Color3.new(1,1,1); GlitchBtn.Parent = MainFrame; Instance.new("UICorner", GlitchBtn)
+    VoteBtn.Size = UDim2.new(0, 95, 0, 35); VoteBtn.Position = UDim2.new(0, 540, 0.08, 0); VoteBtn.Text = Settings.autoVote and "VOTE ON" or "VOTE OFF"; VoteBtn.BackgroundColor3 = Settings.autoVote and Color3.fromRGB(0, 180, 200) or Color3.fromRGB(60, 60, 70); VoteBtn.TextColor3 = Color3.new(1,1,1); VoteBtn.Parent = MainFrame; Instance.new("UICorner", VoteBtn)
+    SilentBtn.Size = UDim2.new(0, 95, 0, 35); SilentBtn.Position = UDim2.new(0, 645, 0.08, 0); SilentBtn.Text = Settings.silentLoad and "SILENT ON" or "SILENT OFF"; SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.fromRGB(100, 50, 150) or Color3.fromRGB(60, 60, 70); SilentBtn.TextColor3 = Color3.new(1,1,1); SilentBtn.Parent = MainFrame; Instance.new("UICorner", SilentBtn)
+    ToggleBtn.Size = UDim2.new(0, 80, 0, 35); ToggleBtn.Position = UDim2.new(1, -95, 0.08, 0); ToggleBtn.Text = Settings.isToggled and "ON" or "OFF"; ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.fromRGB(50, 170, 80) or Color3.fromRGB(170, 40, 40); ToggleBtn.TextColor3 = Color3.new(1,1,1); ToggleBtn.Parent = MainFrame; Instance.new("UICorner", ToggleBtn)
+
+    -- Logic Updates
+    RandomBtn.MouseButton1Click:Connect(function() Settings.YInputValue = tostring(math.random(-1e7, 1e7)); YInput.Text = Settings.YInputValue; SaveSettings() end)
+    ToggleBtn.MouseButton1Click:Connect(function() Settings.isToggled = not Settings.isToggled; ToggleBtn.Text = Settings.isToggled and "ON" or "OFF"; ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.fromRGB(50, 170, 80) or Color3.fromRGB(170, 40, 40); SaveSettings() end)
+    GlitchBtn.MouseButton1Click:Connect(function() Settings.isGlitchToggled = not Settings.isGlitchToggled; GlitchBtn.Text = Settings.isGlitchToggled and "GLITCH ON" or "GLITCH OFF"; GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.fromRGB(50, 170, 80) or Color3.fromRGB(170, 40, 40); SaveSettings() end)
+    VoteBtn.MouseButton1Click:Connect(function() Settings.autoVote = not Settings.autoVote; VoteBtn.Text = Settings.autoVote and "VOTE ON" or "VOTE OFF"; VoteBtn.BackgroundColor3 = Settings.autoVote and Color3.fromRGB(0, 180, 200) or Color3.fromRGB(60, 60, 70); SaveSettings() end)
+    SilentBtn.MouseButton1Click:Connect(function() Settings.silentLoad = not Settings.silentLoad; SilentBtn.Text = Settings.silentLoad and "SILENT ON" or "SILENT OFF"; SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.fromRGB(100, 50, 150) or Color3.fromRGB(60, 60, 70); SaveSettings() end)
+    
+    -- UPDATED LOOP TO BYPASS DETECTION
+    RunService.Heartbeat:Connect(function()
+        if not RootPart or not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
+        CoordLabel.Text = string.format("X: %.0f | Y: %.0f | Z: %.0f", RootPart.Position.X, RootPart.Position.Y, RootPart.Position.Z)
+        
+        if Settings.isGlitchToggled then
+            -- Bypass: Use slightly smaller extremes to avoid instant server kicks
+            local rx = math.random(-5e6, 5e6)
+            local ry = math.random(-5e6, 5e6)
+            local rz = math.random(-5e6, 5e6)
+            
+            Character:PivotTo(CFrame.new(rx, ry, rz))
+            -- Clear Velocity to stop anti-cheat from detecting "unnatural movement speed"
+            RootPart.AssemblyLinearVelocity = Vector3.zero
+            RootPart.AssemblyAngularVelocity = Vector3.zero
+        elseif Settings.isToggled then
+            local tY = tonumber(Settings.YInputValue)
+            if tY then 
+                Character:PivotTo(CFrame.new(RootPart.Position.X, tY, RootPart.Position.Z))
+                RootPart.AssemblyLinearVelocity = Vector3.zero
             end
         end
     end)
 
-    RandomBtn.MouseButton1Click:Connect(function()
-        Settings.YInputValue = tostring(math.random(-100000000,100000000)*10)
-        YBox.Text = Settings.YInputValue
-        if Settings.isToggled then
-            game:GetService("TweenService"):Create(RootPart, TweenInfo.new(1), {CFrame=CFrame.new(RootPart.Position.X,tonumber(Settings.YInputValue),RootPart.Position.Z)}):Play()
-        end
-    end)
-
-    ToggleBtn.MouseButton1Click:Connect(function()
-        Settings.isToggled = not Settings.isToggled
-        ToggleBtn.Text = Settings.isToggled and "ON" or "OFF"
-        ToggleBtn.BackgroundColor3 = Settings.isToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
-    end)
-
-    GlitchBtn.MouseButton1Click:Connect(function()
-        Settings.isGlitchToggled = not Settings.isGlitchToggled
-        GlitchBtn.Text = Settings.isGlitchToggled and "GLITCH ON" or "GLITCH OFF"
-        GlitchBtn.BackgroundColor3 = Settings.isGlitchToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
-    end)
-
-    OrbitBtn.MouseButton1Click:Connect(function()
-        Settings.isOrbitToggled = not Settings.isOrbitToggled
-        if Settings.isOrbitToggled then
-            Settings.orbitAngle = 0
-        end
-        OrbitBtn.Text = Settings.isOrbitToggled and "ORBIT ON" or "ORBIT OFF"
-        OrbitBtn.BackgroundColor3 = Settings.isOrbitToggled and Color3.fromRGB(42, 175, 68) or Color3.fromRGB(175, 42, 42)
-    end)
-
-    SilentBtn.MouseButton1Click:Connect(function()
-        Settings.silentLoad = not Settings.silentLoad
-        SilentBtn.Text = Settings.silentLoad and "SILENT ON" or "SILENT OFF"
-        SilentBtn.BackgroundColor3 = Settings.silentLoad and Color3.fromRGB(120, 70, 200) or Color3.fromRGB(80, 80, 95)
-        MF.Visible = not Settings.silentLoad
-    end)
-
-    DistBox.FocusLost:Connect(function(enter) 
-        if enter and tonumber(DistBox.Text) then 
-            Settings.orbitDistance = tonumber(DistBox.Text) 
+    -- Controls
+    BindInput.FocusLost:Connect(function() local success, kc = pcall(function() return Enum.KeyCode[BindInput.Text:upper()] end) if success then currentKey = kc; Settings.currentKeyValue = BindInput.Text:upper(); SaveSettings() end end)
+    UserInputService.InputBegan:Connect(function(i, g) 
+        if not g and i.KeyCode == currentKey then 
+            MainFrame.Visible = not MainFrame.Visible 
+        end 
+        if not g and i.KeyCode == Enum.KeyCode.P then 
+            ScreenGui:Destroy(); 
+            Settings.isToggled = false; 
+            Settings.isGlitchToggled = false; 
         end 
     end)
-    SpeedBox.FocusLost:Connect(function(enter) 
-        if enter and tonumber(SpeedBox.Text) then 
-            Settings.orbitSpeed = tonumber(SpeedBox.Text) 
-        end 
-    end)
-
-    RS:BindToRenderStep("KAJ_Loop", 1, function(dt)
-        local now = os.clock()
-        if not RootPart then return end
-        local pos = RootPart.Position
-        Coord.Text = string.format("X: %.1f | Y: %.1f | Z: %.1f", pos.X, pos.Y, pos.Z)
-
-        if Settings.isToggled then
-            local ty = tonumber(Settings.YInputValue) or 0
-            RootPart.CFrame = CFrame.new(pos.X, ty, pos.Z)
-        end
-
-                -- GLITCH MODE — 10 TIMES PER SECOND, 10 MILLION STUD RANGE
-        if Settings.isGlitchToggled and now - lastGlitchTime >= GLITCH_SPEED then
-            lastGlitchTime = now
-            local randX = math.random(-MAX_RANGE, MAX_RANGE)
-            local randY = math.random(-MAX_RANGE, MAX_RANGE)
-            local randZ = math.random(-MAX_RANGE, MAX_RANGE)
-            RootPart.CFrame = CFrame.new(randX, randY, randZ)
-        end        -- ==============================================
-        -- ✅ PROPER FULL VERTICAL ORBIT
-        -- ==============================================
-        if Settings.isOrbitToggled then
-            local Target = GetClosestEnemy()
-            if Target then
-                -- Increase angle over time to make the loop
-                Settings.orbitAngle = Settings.orbitAngle + (Settings.orbitSpeed * dt)
-
-                -- Math for vertical circle movement
-                local xOffset = math.sin(Settings.orbitAngle) * Settings.orbitDistance
-                local yOffset = math.cos(Settings.orbitAngle) * Settings.orbitDistance
-
-                -- Move around the target: goes over head → down side → under feet → up other side → repeat
-                RootPart.CFrame = CFrame.new(Target.Position + Vector3.new(xOffset, yOffset, 0))
-            end
-        end    end)
 end
 
--- RUN THE UI
-CreateUI()
+task.spawn(CreateUI)
